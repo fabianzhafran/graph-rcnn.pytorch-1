@@ -3,8 +3,9 @@ import bisect
 import torch
 from torch.utils import data
 from .vg_hdf5 import vg_hdf5
+from .refcoco_dataset import RefCOCO
 from . import samplers
-from .transforms import build_transforms
+from .transforms import build_transforms, m_build_transforms
 from .collate_batch import BatchCollator
 from lib.scene_parser.rcnn.utils.comm import get_world_size, get_rank
 
@@ -73,6 +74,28 @@ def build_data_loader(cfg, split="train", num_im=-1, is_distributed=False, start
         dataloader = data.DataLoader(dataset,
                 num_workers=images_per_batch,
                 batch_sampler=batch_sampler,
+                collate_fn=collator,
+            )
+        return dataloader
+    elif cfg.DATASET.NAME == "refcoco":
+        transforms = m_build_transforms(cfg, is_train=True if split=="train" else False)
+        # TODO: replace this w/t refCOCO dataset class
+        dataset = RefCOCO(split=split, transforms=transforms)
+        sampler = make_data_sampler(dataset, True if split == "train" else False, is_distributed)
+        images_per_batch = cfg.DATASET.TRAIN_BATCH_SIZE if split == "train" else cfg.DATASET.TEST_BATCH_SIZE
+        if get_rank() == 0:
+            print("images_per_batch: {}, num_gpus: {}".format(images_per_batch, num_gpus))
+        images_per_gpu = images_per_batch // num_gpus if split == "train" else images_per_batch
+        #start_iter = start_iter if split == "train" else 0
+        #num_iters = cfg.SOLVER.MAX_ITER if split == "train" else None
+        #aspect_grouping = [1] if cfg.DATASET.ASPECT_RATIO_GROUPING else []
+        #batch_sampler = make_batch_data_sampler(
+        #    dataset, sampler, aspect_grouping, images_per_gpu, num_iters, start_iter
+        #)
+        collator = BatchCollator(cfg.DATASET.SIZE_DIVISIBILITY)
+        dataloader = data.DataLoader(dataset,
+                num_workers=images_per_batch,
+                #batch_sampler=batch_sampler,
                 collate_fn=collator,
             )
         return dataloader

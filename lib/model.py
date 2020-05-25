@@ -5,6 +5,8 @@ import time
 import numpy as np
 import torch
 import cv2
+import pickle
+
 from .data.build import build_data_loader
 from .scene_parser.parser import build_scene_parser
 from .scene_parser.parser import build_scene_parser_optimizer
@@ -28,7 +30,10 @@ class SceneGraphGeneration:
         self.device = torch.device("cuda")
 
         # build data loader
-        self.data_loader_train = build_data_loader(cfg, split="train", is_distributed=distributed)
+        if cfg.inference:
+            self.data_loader_train = build_data_loader(cfg, split="test", is_distributed=distributed)
+        else:
+            self.data_loader_train = build_data_loader(cfg, split="train", is_distributed=distributed)
         self.data_loader_test = build_data_loader(cfg, split="test", is_distributed=distributed)
 
         cfg.DATASET.IND_TO_OBJECT = self.data_loader_train.dataset.ind_to_classes
@@ -223,6 +228,10 @@ class SceneGraphGeneration:
         reg_recalls = []
         for i, data in enumerate(self.data_loader_test, 0):
             imgs, targets, image_ids = data
+            #print("Input data: img", imgs.image_sizes, imgs.tensors.shape)
+            #print("Input data: img", targets[0].bbox.shape, targets[0].extra_fields)
+            #print("Image id:", image_ids)
+            #input()
             imgs = imgs.to(self.device); targets = [target.to(self.device) for target in targets]
             if i % 10 == 0:
                 logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
@@ -240,6 +249,12 @@ class SceneGraphGeneration:
                     torch.cuda.synchronize()
                     timer.toc()
                 output = [o.to(cpu_device) for o in output]
+                #print("Output:", output)
+                #print("Output pred:", output_pred)
+                #with open("result/bbox_%i.pkl" % image_ids, "wb") as f_bbox:
+                #    pickle.dump(output[0], f_bbox)
+                #with open("result/bbox_pair_%i.pkl" % image_ids, "wb") as f_bbox_pair:
+                #    pickle.dump(output_pred[0], f_bbox_pair)
                 if visualize:
                     self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs, output)
             results_dict.update(
