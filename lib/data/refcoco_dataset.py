@@ -122,15 +122,23 @@ class RefCOCO(Dataset):
         ref_expr = "\n".join([s["raw"] for s in ref["sentences"]])
 
         # get object bounding boxes, labels and relations
-        obj_boxes = [[34.79, 272.54, 106.72, 80.43]] # dummy target bbox
-        target_raw = BoxList(obj_boxes, (width, height), mode="xyxy")
-        img, target = self.transforms(img, target_raw)
+        #obj_boxes = [[34.79, 272.54, 106.72, 80.43]] # dummy target bbox
+        referent_box = [self.refer.Anns[ann_id]["bbox"]]
+        target_raw = BoxList(referent_box, (width, height), mode="xyxy")
+        if self.transforms is not None:
+            img, target = self.transforms(img, target_raw)
+        else:
+            img, target = img, target_raw
+        target.add_field("ref_sents", [s["raw"] for s in ref["sentences"]])
+        target.add_field("label", self.refer.Anns[ann_id]["category_id"])
         #target.add_field("labels", torch.from_numpy(obj_labels))
         #target.add_field("pred_labels", torch.from_numpy(obj_relations))
         #target.add_field("relation_labels", torch.from_numpy(obj_relation_triplets))
         target = target.clip_to_image(remove_empty=False)
 
-        return img, target, index
+        info = {"img_id":img_id, "ann_id":ann_id, "ref_id": self.ref_ids[index], "ref_sents": [s["raw"] for s in ref["sentences"]]}
+
+        return img, target, index, info
 
     #def get_groundtruth(self, index):
     #    width, height = self.im_sizes[index, :]
@@ -174,4 +182,8 @@ class RefCOCO(Dataset):
 
     #def map_class_id_to_class_name(self, class_id):
     #    return self.ind_to_classes[class_id]
+
+if __name__ == "__main__":
+    ds = RefCOCO()
+    print(ds.next())
 

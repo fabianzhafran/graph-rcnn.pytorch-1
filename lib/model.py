@@ -230,7 +230,7 @@ class SceneGraphGeneration:
             imgs, targets, image_ids = data
             #print("Input data: img", imgs.image_sizes, imgs.tensors.shape)
             #print("Input data: img", targets[0].bbox.shape, targets[0].extra_fields)
-            #print("Image id:", image_ids)
+            print("Image id:", image_ids)
             #input()
             imgs = imgs.to(self.device); targets = [target.to(self.device) for target in targets]
             if i % 10 == 0:
