@@ -26,13 +26,14 @@ sh scripts/eval.sh
   - Follow installation guide here: https://github.com/airsplay/py-bottom-up-attention.git
 2. Run the python script
 ```
-cd graph-rcnn.pytorch/
-python scripts/run_bottom_up.py
+cd graph-rcnn.pytorch/scripts
+python run_bottom_up.py
 ```
 3. Results are dumped in `graph-rcnn.pytorch/results/`
   - `bottom_up_predictions.pth` will be used in the merging phase
 
 ### Merge graph
 ```
-python scripts/merge_graph.py
+cd graph-rcnn.pytorch/scripts
+python merge_graph.py
 ```

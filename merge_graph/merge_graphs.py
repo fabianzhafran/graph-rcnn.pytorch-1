@@ -67,14 +67,14 @@ def generate_csv():
 if __name__ == "__main__":
     grcnn_preds = torch.load("../results/predictions.pth") # grcnn obj bboxes
     grcnn_rel_preds = torch.load("../results/predictions_pred.pth") # grcnn relationship predictions
-    bottom_up_preds = torch.load("/projectnb/llamagrp/shawnlin/ref-exp-gen/test-detectron/results/predictions.pts") # detectron2 attribute predictions
+    bottom_up_preds = torch.load("../results/bottom_up_predictions.pth") # detectron2 attribute predictions
 
     # RefCOCO dataset loader
     dataset = RefCOCO(split="test")
     data_loader = DataLoader(dataset, shuffle=False)
 
     # G-RCNN class/relationship vocabulary
-    info = json.load(open("/projectnb/llamagrp/shawnlin/ref-exp-gen/graph-rcnn.pytorch/datasets/vg_bm/VG-SGG-dicts.json", 'r'))
+    info = json.load(open("../datasets/vg_bm/VG-SGG-dicts.json", 'r'))
     info['label_to_idx']['__background__'] = 0
     class_to_ind = info['label_to_idx']
     ind_to_classes = sorted(class_to_ind, key=lambda k: class_to_ind[k])
