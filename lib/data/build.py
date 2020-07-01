@@ -4,10 +4,12 @@ import torch
 from torch.utils import data
 from .vg_hdf5 import vg_hdf5
 from .refcoco_dataset import RefCOCO
+from .mini_dataset import MiniDataset
 from . import samplers
 from .transforms import build_transforms, m_build_transforms
 from .collate_batch import BatchCollator
 from lib.scene_parser.rcnn.utils.comm import get_world_size, get_rank
+from torchvision.datasets import ImageFolder
 
 def make_data_sampler(dataset, shuffle, distributed):
     if distributed:
@@ -92,6 +94,23 @@ def build_data_loader(cfg, split="train", num_im=-1, is_distributed=False, start
         #batch_sampler = make_batch_data_sampler(
         #    dataset, sampler, aspect_grouping, images_per_gpu, num_iters, start_iter
         #)
+        collator = BatchCollator(cfg.DATASET.SIZE_DIVISIBILITY)
+        dataloader = data.DataLoader(dataset,
+                num_workers=images_per_batch,
+                shuffle=False,
+                #batch_sampler=batch_sampler,
+                collate_fn=collator,
+            )
+        return dataloader
+    elif cfg.DATASET.NAME == "mini":
+        transforms = m_build_transforms(cfg, is_train=True if split=="train" else False)
+        # TODO: replace this w/t refCOCO dataset class
+        dataset = MiniDataset(transform=transforms)
+        sampler = make_data_sampler(dataset, True if split == "train" else False, is_distributed)
+        images_per_batch = cfg.DATASET.TRAIN_BATCH_SIZE if split == "train" else cfg.DATASET.TEST_BATCH_SIZE
+        if get_rank() == 0:
+            print("images_per_batch: {}, num_gpus: {}".format(images_per_batch, num_gpus))
+        images_per_gpu = images_per_batch // num_gpus if split == "train" else images_per_batch
         collator = BatchCollator(cfg.DATASET.SIZE_DIVISIBILITY)
         dataloader = data.DataLoader(dataset,
                 num_workers=images_per_batch,
