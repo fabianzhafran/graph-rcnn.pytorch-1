@@ -13,12 +13,12 @@ from lib.scene_parser.rcnn.structures.bounding_box import BoxList
 
 import cv2
 import sys
-sys.path.append("/projectnb/llamagrp/shawnlin/ref-exp-gen/dataset/refer2/refer")
+sys.path.append("/projectnb/statnlp/gik/refer")
 
 from refer import REFER
 
 class RefCOCO(Dataset):
-    def __init__(self, data_dir="/projectnb/llamagrp/shawnlin/ref-exp-gen/dataset/refer2/refer/data", dataset="refcoco", split="train", splitBy="google", transforms=None):
+    def __init__(self, data_dir="/projectnb/statnlp/gik/refer/data", dataset="refcoco", split="train", splitBy="google", transforms=None):
         assert (split in ["train", "val", "test"])
         assert os.path.exists(data_dir), \
             "cannot find folder {}, please download refcoco data into this folder".format(data_dir)
@@ -37,7 +37,7 @@ class RefCOCO(Dataset):
 
         # read in dataset from a h5 file and a dict (json) file
         #self.im_h5 = h5py.File(self.image_file, 'r')
-        self.info = json.load(open("/projectnb/llamagrp/shawnlin/ref-exp-gen/graph-rcnn.pytorch/datasets/vg_bm/VG-SGG-dicts.json", 'r'))
+        self.info = json.load(open("/projectnb/statnlp/gik/graph-rcnn.pytorch/datasets/vg_bm/VG-SGG-dicts.json", 'r'))
         #self.im_refs = self.im_h5['images'] # image data reference
         #im_scale = self.im_refs.shape[2]
 
@@ -110,12 +110,16 @@ class RefCOCO(Dataset):
         get dataset item
         """
         # get image
+        print("~~~printing from refcoco_dataset.py~~~")
         ref = self.refer.Refs[self.ref_ids[index]]
         img_id = ref["image_id"]
         ann_id = ref["ann_id"]
         img_path = os.path.join(self.refer.IMAGE_DIR, self.refer.Imgs[img_id]["file_name"])
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        print("{}. =========".format(index))
+        print("img shape type before:")
+        print(img.shape)
         #print("img original size", img.shape)
         width, height = img.shape[0], img.shape[1]
         #print("img after size", img.shape)
@@ -125,6 +129,7 @@ class RefCOCO(Dataset):
         #obj_boxes = [[34.79, 272.54, 106.72, 80.43]] # dummy target bbox
         referent_box = [self.refer.Anns[ann_id]["bbox"]]
         target_raw = BoxList(referent_box, (width, height), mode="xyxy")
+        # print(target_raw)
         if self.transforms is not None:
             img, target = self.transforms(img, target_raw)
         else:
@@ -136,6 +141,11 @@ class RefCOCO(Dataset):
         #target.add_field("relation_labels", torch.from_numpy(obj_relation_triplets))
         target = target.clip_to_image(remove_empty=False)
 
+        print("img shape type after:")
+        print(img.shape)
+        print(type(img))
+        print("~~~~~~")
+        print()
         info = {"img_id":img_id, "ann_id":ann_id, "ref_id": self.ref_ids[index], "ref_sents": [s["raw"] for s in ref["sentences"]]}
 
         return img, target, index, info

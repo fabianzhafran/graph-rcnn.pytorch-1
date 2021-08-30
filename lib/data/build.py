@@ -4,6 +4,7 @@ import torch
 from torch.utils import data
 from .vg_hdf5 import vg_hdf5
 from .refcoco_dataset import RefCOCO
+from .flickr_dataset import Flickr30K
 from .mini_dataset import MiniDataset
 from . import samplers
 from .transforms import build_transforms, m_build_transforms
@@ -94,6 +95,21 @@ def build_data_loader(cfg, split="train", num_im=-1, is_distributed=False, start
         #batch_sampler = make_batch_data_sampler(
         #    dataset, sampler, aspect_grouping, images_per_gpu, num_iters, start_iter
         #)
+        collator = BatchCollator(cfg.DATASET.SIZE_DIVISIBILITY)
+        dataloader = data.DataLoader(dataset,
+                num_workers=images_per_batch,
+                shuffle=False,
+                #batch_sampler=batch_sampler,
+                collate_fn=collator,
+            )
+        return dataloader
+    elif cfg.DATASET.NAME == "flickr30k":
+        transforms = m_build_transforms(cfg, is_train=False)
+        dataset = Flickr30K(transforms=transforms)
+        images_per_batch = cfg.DATASET.TRAIN_BATCH_SIZE if split == "train" else cfg.DATASET.TEST_BATCH_SIZE
+        if get_rank() == 0:
+            print("images_per_batch: {}, num_gpus: {}".format(images_per_batch, num_gpus))
+        images_per_gpu = images_per_batch // num_gpus if split == "train" else images_per_batch
         collator = BatchCollator(cfg.DATASET.SIZE_DIVISIBILITY)
         dataloader = data.DataLoader(dataset,
                 num_workers=images_per_batch,

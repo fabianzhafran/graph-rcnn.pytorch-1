@@ -126,6 +126,11 @@ class MiniDataset(Dataset):
 
         info = {"img_id":img_id}
 
+        # print img shape and type
+        print("~~~ img shape type ~~~")
+        print(img.shape)
+        print(type(img))
+        print("~~~~~~")
         return img, target, index, info
 
     #def get_groundtruth(self, index):

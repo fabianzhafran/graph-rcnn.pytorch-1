@@ -36,8 +36,8 @@ class SceneGraphGeneration:
             self.data_loader_train = build_data_loader(cfg, split="train", is_distributed=distributed)
         self.data_loader_test = build_data_loader(cfg, split="test", is_distributed=distributed)
 
-        cfg.DATASET.IND_TO_OBJECT = self.data_loader_train.dataset.ind_to_classes
-        cfg.DATASET.IND_TO_PREDICATE = self.data_loader_train.dataset.ind_to_predicates
+        # cfg.DATASET.IND_TO_OBJECT = self.data_loader_train.dataset.ind_to_classes
+        # cfg.DATASET.IND_TO_PREDICATE = self.data_loader_train.dataset.ind_to_predicates
 
         logger = logging.getLogger("scene_graph_generation.trainer")
         logger.info("Train data size: {}".format(len(self.data_loader_train.dataset)))
@@ -199,7 +199,11 @@ class SceneGraphGeneration:
         return predictions
 
     def visualize_detection(self, dataset, img_ids, imgs, predictions):
+        # changed visualize folder to see test results
+        # old folder = "visualize_flickr30k"
         visualize_folder = "visualize"
+        if self.cfg.DATASET.NAME == "flickr30k":
+            visualize_folder += "_flickr30k"
         if not os.path.exists(visualize_folder):
             os.mkdir(visualize_folder)
         for i, prediction in enumerate(predictions):
@@ -227,11 +231,18 @@ class SceneGraphGeneration:
         total_timer.tic()
         reg_recalls = []
         for i, data in enumerate(self.data_loader_test, 0):
+
+            # print("data : {}".format(data))
             imgs, targets, image_ids = data
+
             #print("Input data: img", imgs.image_sizes, imgs.tensors.shape)
             #print("Input data: img", targets[0].bbox.shape, targets[0].extra_fields)
-            print("Image id:", image_ids)
+            # targets = targets[0]
+            # image_ids = image_ids[0]["image_name"]
             #input()
+            # if (i == 20):
+            #     break
+            # ~~~ COMMENTED ~~~~
             imgs = imgs.to(self.device); targets = [target.to(self.device) for target in targets]
             if i % 10 == 0:
                 logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
@@ -249,12 +260,14 @@ class SceneGraphGeneration:
                     torch.cuda.synchronize()
                     timer.toc()
                 output = [o.to(cpu_device) for o in output]
+            # ~~~ end-COMMENTED ~~~~
                 #print("Output:", output)
                 #print("Output pred:", output_pred)
                 #with open("result/bbox_%i.pkl" % image_ids, "wb") as f_bbox:
                 #    pickle.dump(output[0], f_bbox)
                 #with open("result/bbox_pair_%i.pkl" % image_ids, "wb") as f_bbox_pair:
                 #    pickle.dump(output_pred[0], f_bbox_pair)
+            # ~~~ COMMENTED ~~~~
                 if visualize:
                     self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs, output)
             results_dict.update(
@@ -292,7 +305,12 @@ class SceneGraphGeneration:
         if not is_main_process():
             return
 
+        # output_folder = "results_flickr30k_new"
+        # changed folder to see test results
+        # old folder = "results_flickr30k"
         output_folder = "results"
+        if self.cfg.DATASET.NAME == "flickr30k":
+            output_folder += "_flickr30k"
         if output_folder:
             if not os.path.exists(output_folder):
                 os.mkdir(output_folder)
@@ -306,17 +324,19 @@ class SceneGraphGeneration:
             expected_results=self.cfg.TEST.EXPECTED_RESULTS,
             expected_results_sigma_tol=self.cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
         )
-        eval_det_results = evaluate(dataset=self.data_loader_test.dataset,
-                        predictions=predictions,
-                        output_folder=output_folder,
-                        **extra_args)
+        # eval_det_results = evaluate(dataset=self.data_loader_test.dataset,
+        #                 predictions=predictions,
+        #                 output_folder=output_folder,
+        #                 **extra_args)
 
-        if self.cfg.MODEL.RELATION_ON:
-            eval_sg_results = evaluate_sg(dataset=self.data_loader_test.dataset,
-                            predictions=predictions,
-                            predictions_pred=predictions_pred,
-                            output_folder=output_folder,
-                            **extra_args)
+        # if self.cfg.MODEL.RELATION_ON:
+        #     eval_sg_results = evaluate_sg(dataset=self.data_loader_test.dataset,
+        #                     predictions=predictions,
+        #                     predictions_pred=predictions_pred,
+        #                     output_folder=output_folder,
+        #                     **extra_args)
+            # ~~~ end-COMMENTED ~~~~
+    
 
 def build_model(cfg, arguments, local_rank, distributed):
     return SceneGraphGeneration(cfg, arguments, local_rank, distributed)

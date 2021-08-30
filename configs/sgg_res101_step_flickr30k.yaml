@@ -1,5 +1,5 @@
 DATASET:
-  NAME: "refcoco"
+  NAME: "flickr30k"
   MODE: "benchmark"
   TRAIN_BATCH_SIZE: 8
   TEST_BATCH_SIZE: 1

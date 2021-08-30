@@ -35,7 +35,7 @@ from lib.scene_parser.rcnn.structures.bounding_box import BoxList
 from refer import REFER
 
 NUM_OBJECTS = 36
-save_dir = "../results/"
+save_dir = "../results_extended/"
 
 def gen_ref_coco_data():
 
@@ -58,16 +58,16 @@ def gen_ref_coco_data():
 
         yield (img, ref_expr, img_id, ann_id, ref_id)
 
-def get_refer_classes():
-    refer = REFER(dataset='refcoco', data_root='/projectnb/statnlp/gik/refer/data', splitBy='google')
+# def get_refer_classes():
+#     refer = REFER(dataset='refcoco', data_root='/projectnb/statnlp/gik/refer/data', splitBy='google')
     
-    lastIdx = 1
-    for key, value in refer.Cats.items():
-        lastIdx = max(lastIdx, int(key))
-    list_classes = [f'None-{i}' for i in range(lastIdx+1)]
-    for key, value in refer.Cats.items():
-        list_classes[int(key)] = value
-    return list_classes
+#     lastIdx = 1
+#     for key, value in refer.Cats.items():
+#         lastIdx = max(lastIdx, int(key))
+#     list_classes = ['None' for i in range(lastIdx+1)]
+#     for key, value in refer.Cats.items():
+#         list_classes[int(key)] = value
+#     return list_classes
         
 def gen_mini_data():
     pass
@@ -156,29 +156,26 @@ def doit(raw_image):
 
 if __name__ == "__main__":
     
-    data_path = "/projectnb/statnlp/gik/py-bottom-up-attention/demo/data/genome/1600-400-20"
-#     data_path = "/projectnb/llamagrp/shawnlin/ref-exp-gen/bottom-up-attention/data/genome/1600-400-20"
+    data_path = "/projectnb/statnlp/gik/refer/"
 
-    vg_classes = []
-    with open(os.path.join(data_path, 'objects_vocab.txt')) as f:
+    refcoco_vg_classes = []
+    with open(os.path.join(data_path, 'extended_objects_vocab_vg_recoco.txt')) as f:
         for object in f.readlines():
-            vg_classes.append(object.split(',')[0].lower().strip())
+            refcoco_vg_classes.append(object.split(',')[0].lower().strip())
 
+    data_path = "/projectnb/statnlp/gik/py-bottom-up-attention/demo/data/genome/1600-400-20"
     vg_attrs = []
     with open(os.path.join(data_path, 'attributes_vocab.txt')) as f:
         for object in f.readlines():
             vg_attrs.append(object.split(',')[0].lower().strip())
            
 
-    refer_classes = get_refer_classes()
     
-#     MetadataCatalog.get("vg").thing_classes = vg_classes
-    MetadataCatalog.get("vg").thing_classes = refer_classes
-    
+    MetadataCatalog.get("vg").thing_classes = refcoco_vg_classes
     MetadataCatalog.get("vg").attr_classes = vg_attrs
 
 
-    NUM_CLASSES = len(refer_classes)
+    NUM_CLASSES = len(refcoco_vg_classes)
     
     cfg = get_cfg()
     cfg.merge_from_file("/projectnb/statnlp/gik/py-bottom-up-attention/configs/VG-Detection/faster_rcnn_R_101_C4_attr_caffemaxpool.yaml")
@@ -268,6 +265,6 @@ if __name__ == "__main__":
         #data.append(new_entry)
         #with open("./data/%i.json" % i, "w") as f:
 
-    torch.save(data, "results/bottom_up_predictions.pth")
+    torch.save(data, "../results_extended/bottom_up_predictions.pth")
     #dd.io.save('vg_bottom_up_data.h5', data, compression="default")
     #hf.create_dataset("vg_bottom_up", data=data)

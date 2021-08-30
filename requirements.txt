@@ -8,3 +8,6 @@ easydict
 dill
 opencv-python
 pycocotools
+scipy
+pandas
+bbox

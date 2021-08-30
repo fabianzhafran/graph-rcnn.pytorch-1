@@ -73,7 +73,7 @@ def get_refer_classes():
     lastIdx = 1
     for key, value in refer.Cats.items():
         lastIdx = max(lastIdx, int(key))
-    list_classes = ['None' for i in range(lastIdx+1)]
+    list_classes = [f'None-{i}' for i in range(lastIdx+1)]
     for key, value in refer.Cats.items():
         list_classes[int(key)] = value
     return list_classes
@@ -82,6 +82,8 @@ if __name__ == "__main__":
     grcnn_preds = torch.load("../results/predictions.pth") # grcnn obj bboxes
     grcnn_rel_preds = torch.load("../results/predictions_pred.pth") # grcnn relationship predictions
     bottom_up_preds = torch.load("../results/bottom_up_predictions.pth") # detectron2 attribute predictions
+    bottom_up_preds_target = torch.load("../results/bottom_up_predictions_target_ref.pth") # detectron2 target ref attribute predictions
+    
 
     # RefCOCO dataset loader
     dataset = RefCOCO(split="test")
@@ -211,6 +213,9 @@ if __name__ == "__main__":
         #df = pd.DataFrame(columns=attr_table_headers)
         f_attr = open("attr_tables/attr_%i.tsv" % i, "w+")
         f_attr.write("%s\n" % ("\t".join(attr_table_headers)))
+        
+        f_attr_target_box = open("attr_tables_with_target_box/attr_%i.tsv" % i, "w+")
+        f_attr_target_box.write("%s\n" % ("\t".join(attr_table_headers)))
 
         #for j, (bbox, label, score, cls_prob, attr_prob) in enumerate(zip(bboxes2, labels2, scores2, cls_probs, attr_probs)):
         #    if score < score_thresh: continue
@@ -243,9 +248,41 @@ if __name__ == "__main__":
             #df.loc[j] = new_row
             new_row = [str(l) for l in new_row]
             f_attr.write("%s\n" % ("\t".join(new_row)))
+            f_attr_target_box.write("%s\n" % ("\t".join(new_row)))
         #plt.show()
         f_attr.close()
         #df.to_csv("attr_tables/attr_%i.tsv" % i, sep="\t", index=False)
+        
+        ######### for attr ref target
+       
+        bot_ref_preds = bottom_up_preds_target[i]
+      
+        bboxes2 = bot_ref_preds.bbox
+        labels2 = bot_ref_preds.extra_fields["labels"]
+        scores2 = bot_ref_preds.extra_fields["scores"]
+        attr_logits2 = bot_ref_preds.extra_fields["attr_logits"]
+        attr_probs = torch.nn.functional.softmax(attr_logits2, dim=1)
+        cls_probs = torch.nn.functional.softmax(bot_ref_preds.extra_fields["cls_logits"], dim=1)
+        img_h = img.shape[0]
+        img_w = img.shape[1]
+
+        for j, (bbox, label, score, cls_prob, attr_prob) in enumerate(zip(bboxes2, labels2, scores2, cls_probs, attr_probs)):
+            if score < score_thresh: continue
+
+            class_name = vg_classes[label.item()]
+          
+            class_alias = "%s-%i" % (class_name, class_cntr2.get(class_name, 0) + 1)
+           
+            salience = (bbox[2] - bbox[0])*(bbox[3] - bbox[1])/(img_h*img_w)
+            new_row = [class_alias, img_id, ann_id, ref_id, salience.item()] + [bbox[0].item(), bbox[1].item(), (bbox[2] - bbox[0]).item(), (bbox[3] - bbox[1]).item()] +\
+                      cls_prob.tolist() + attr_prob.tolist()
+            #df.loc[j] = new_row
+            new_row = [str(l) for l in new_row]
+            f_attr_target_box.write("%s\n" % ("\t".join(new_row[:-1])))
+        #plt.show()
+        f_attr_target_box.close()
+        
+        #############
 
         # Hungarian allignment for objects in both scenes
         M_cost = create_cost_matrix(preds, bot_preds, thresh=score_thresh)

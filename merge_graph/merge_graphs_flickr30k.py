@@ -3,6 +3,7 @@ import sys
 sys.path.append("../")
 import json
 import numpy as np
+from itertools import islice
 
 import torch
 from torch.utils.data import DataLoader
@@ -19,10 +20,8 @@ from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
 
 from lib.data.refcoco_dataset import RefCOCO
+from lib.data.flickr_dataset import Flickr30K
 import pdb
-
-sys.path.append("/projectnb/statnlp/gik/refer")
-from refer import REFER
 
 # Utils
 
@@ -66,30 +65,20 @@ def generate_csv():
     for idx, hf in tqdm(enumerate(data_iterator())):
 
         df.to_csv("./scene_graph/%i.tsv" % idx, sep="\t")
-        
-def get_refer_classes():
-    refer = REFER(dataset='refcoco', data_root='/projectnb/statnlp/gik/refer/data', splitBy='google')
-    
-    lastIdx = 1
-    for key, value in refer.Cats.items():
-        lastIdx = max(lastIdx, int(key))
-    list_classes = ['None' for i in range(lastIdx+1)]
-    for key, value in refer.Cats.items():
-        list_classes[int(key)] = value
-    return list_classes
 
 if __name__ == "__main__":
-    grcnn_preds = torch.load("../results/predictions.pth") # grcnn obj bboxes
-    grcnn_rel_preds = torch.load("../results/predictions_pred.pth") # grcnn relationship predictions
-    bottom_up_preds = torch.load("../results/bottom_up_predictions.pth") # detectron2 attribute predictions
+    grcnn_preds = torch.load("../results_flickr30k/predictions.pth") # grcnn obj bboxes
+    grcnn_rel_preds = torch.load("../results_flickr30k/predictions_pred.pth") # grcnn relationship predictions
+    bottom_up_preds = torch.load("../results_flickr30k/bottom_up_predictions.pth") # detectron2 attribute predictions
 
-    # RefCOCO dataset loader
-    dataset = RefCOCO(split="test")
+    # Flickr30K dataset loader
+    # dataset = RefCOCO(split="test")
+    dataset = Flickr30K()
     # data_loader is not used, only dataset is used
     data_loader = DataLoader(dataset, shuffle=False) 
 
     # G-RCNN class/relationship vocabulary
-    info = json.load(open("../datasets/vg_bm/VG-SGG-dicts.json", 'r'))
+    info = json.load(open("../../graph-rcnn.pytorch/datasets/vg_bm/VG-SGG-dicts.json", 'r'))
     info['label_to_idx']['__background__'] = 0
     class_to_ind = info['label_to_idx']
     ind_to_classes = sorted(class_to_ind, key=lambda k: class_to_ind[k])
@@ -101,9 +90,7 @@ if __name__ == "__main__":
 
     rel_table_headers = [
         "rel_alias",
-        "image_id",
-        "ann_id",
-        "ref_id",
+        "image_name",
     ]
 
     for rel_name in ind_to_predicates:
@@ -115,9 +102,7 @@ if __name__ == "__main__":
     # Attribute csv header
     attr_table_headers = [
         "box_alias",
-        "image_id",
-        "ann_id",
-        "ref_id",
+        "image_name",
         "salience",
         "x1",
         "y1",
@@ -128,19 +113,13 @@ if __name__ == "__main__":
     obj_type_list = []
     attr_list = []
 
-#     vg_classes = []
-#     with open(os.path.join(data_path, 'objects_vocab.txt')) as f:
-#         for object in f.readlines():
-#             vg_classes.append(object.split(',')[0].lower().strip())
-#             obj_name = "%s" % object.split(',')[0].lower().strip().replace(" ", "_")
-#             attr_table_headers.append("TYPE_%s" % obj_name)
-#             obj_type_list.append(obj_name)
-            
-    vg_classes =  get_refer_classes()
-    for object in vg_classes:
-        attr_table_headers.append("TYPE_%s" % object)
-        obj_type_list.append(object)  
-        
+    vg_classes = []
+    with open(os.path.join(data_path, 'objects_vocab.txt')) as f:
+        for object in f.readlines():
+            vg_classes.append(object.split(',')[0].lower().strip())
+            obj_name = "%s" % object.split(',')[0].lower().strip().replace(" ", "_")
+            attr_table_headers.append("TYPE_%s" % obj_name)
+            obj_type_list.append(obj_name)
     # TODO: handle OOV obj type?
     attr_table_headers.append("TYPE_OOV")
     obj_type_list.append("OOV")
@@ -155,15 +134,21 @@ if __name__ == "__main__":
 
     # Merge predictions
 
-    for i, (img, target, _, img_info) in enumerate(tqdm(iter(dataset))):
+    for i, (img, target, _, img_name_int, img_info) in islice(enumerate(tqdm(iter(dataset))), 29777, None):
+#     for i, (img, target, _, img_name_int, img_info) in enumerate(tqdm(iter(dataset))):
+#         if (i < 17054):
+#             continue
+        if (i < 29778):
+            continue
         preds = grcnn_preds[i]
         rel_preds = grcnn_rel_preds[i]
         #print(preds)
         #print(rel_preds)
-
-        img_id = img_info["img_id"]
-        ann_id = img_info["ann_id"]
-        ref_id = img_info["ref_id"]
+        
+#         print(img_info)
+        img_name = img_info["image_name"]
+        # ann_id = img_info["ann_id"]
+        # ref_id = img_info["ref_id"]
 
         #plt.imshow(img)
         #ax = plt.gca()
@@ -209,14 +194,14 @@ if __name__ == "__main__":
         img_w = img.shape[1]
 
         #df = pd.DataFrame(columns=attr_table_headers)
-        f_attr = open("attr_tables/attr_%i.tsv" % i, "w+")
+        f_attr = open("attr_tables_flickr30k/attr_%i.tsv" % img_name, "w+")
         f_attr.write("%s\n" % ("\t".join(attr_table_headers)))
 
         #for j, (bbox, label, score, cls_prob, attr_prob) in enumerate(zip(bboxes2, labels2, scores2, cls_probs, attr_probs)):
         #    if score < score_thresh: continue
         #    box_alias =
         #    salience = (bbox[2] - bbox[0])*(bbox[3] - bbox[1])/(img_h*img_w)
-        #    new_row = [img_id, ann_id, ref_id, salience.item()] + [bbox[0], bbox[1], (bbox[2] - bbox[0]), (bbox[3] - bbox[1])] +\
+        #    new_row = [img_name, ann_id, ref_id, salience.item()] + [bbox[0], bbox[1], (bbox[2] - bbox[0]), (bbox[3] - bbox[1])] +\
         #              cls_prob.tolist() + attr_prob.tolist()
         #    df.loc[i] = new_row
         #df.to_csv("test_sg.csv", sep="\t")
@@ -238,7 +223,7 @@ if __name__ == "__main__":
             #ax.add_patch(rect)
 
             salience = (bbox[2] - bbox[0])*(bbox[3] - bbox[1])/(img_h*img_w)
-            new_row = [class_alias, img_id, ann_id, ref_id, salience.item()] + [bbox[0].item(), bbox[1].item(), (bbox[2] - bbox[0]).item(), (bbox[3] - bbox[1]).item()] +\
+            new_row = [class_alias, img_name, salience.item()] + [bbox[0].item(), bbox[1].item(), (bbox[2] - bbox[0]).item(), (bbox[3] - bbox[1]).item()] +\
                       cls_prob.tolist() + attr_prob.tolist()
             #df.loc[j] = new_row
             new_row = [str(l) for l in new_row]
@@ -267,7 +252,7 @@ if __name__ == "__main__":
         # Decode relationships according to matched objects
         # Dump relationship table as tsv
         TOPK = 3
-        f_rel = open("rel_tables/rel_%i.tsv" % i, "w+")
+        f_rel = open("rel_tables_flickr30k/rel_%i.tsv" % img_name, "w+")
         f_rel.write("%s\n" % ("\t".join(rel_table_headers)))
         #df_rel = pd.DataFrame(columns=rel_table_headers)
         for j, (idx_pair, rel_scores) in enumerate(zip(rel_preds.extra_fields["idx_pairs"], rel_preds.extra_fields["scores"])):
@@ -284,7 +269,7 @@ if __name__ == "__main__":
                 #print("%s <----> %s\t[%s]" % (class_alias_map2[to_1_2_map[i1]], class_alias_map2[to_1_2_map[i2]], rel_str))
 
                 rel_alias = "(%s,%s)" % (class_alias_map2[to_1_2_map[i1]], class_alias_map2[to_1_2_map[i2]])
-                new_row = [rel_alias, img_id, ann_id, ref_id] + rel_scores.tolist()
+                new_row = [rel_alias, img_name] + rel_scores.tolist()
                 new_row = [str(l) for l in new_row]
                 #df_rel.loc[j] = new_row
                 f_rel.write("%s\n" % ("\t".join(new_row)))
@@ -293,10 +278,11 @@ if __name__ == "__main__":
 
 
         # TODO: Dump the referent object and bbox into 1 csv
-        label_info = target.extra_fields
-        label_info["bbox"] = target.bbox.numpy().tolist()
+        print(target)
+        label_info = target.get_field("extra_fields")
+        # label_info["bbox"] = target.bbox.numpy().tolist()
         #print(target.extra_fields)
         #print(label_info)
-        json.dump(label_info, open("labels/lab_%i.json" % i, "w+"))
+        json.dump(label_info, open("labels_flickr30k/lab_%i.json" % img_name, "w+"))
 
         #input()

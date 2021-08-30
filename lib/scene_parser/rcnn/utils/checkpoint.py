@@ -52,10 +52,14 @@ class Checkpointer(object):
         self.tag_last_checkpoint(save_file)
 
     def load(self, f=None, resume=0, use_latest=False):
+        if resume>0:
+            self.logger.info("try to resume from checkpoints")
         if self.has_last_checkpoint() and use_latest and resume > 0:
             # override argument with existing checkpoint
+            self.logger.info("has last checkpoints")
             f = self.get_last_checkpoint_file()
         elif self.has_checkpoint(resume) and resume > 0:
+            self.logger.info("has checkpoints")
             f = self.get_checkpoint_file(resume)
         if not f:
             # no checkpoint could be found
@@ -76,6 +80,7 @@ class Checkpointer(object):
 
     def has_last_checkpoint(self):
         save_file = os.path.join(self.save_dir, "last_checkpoint")
+        self.logger.info("looking for check point in {}".format(self.save_dir))
         return os.path.exists(save_file)
 
     def get_last_checkpoint_file(self):
