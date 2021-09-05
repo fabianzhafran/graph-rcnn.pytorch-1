@@ -4,7 +4,7 @@ import torch
 from torch.utils import data
 from .vg_hdf5 import vg_hdf5
 from .refcoco_dataset import RefCOCO
-from .refcoco+_dataset import RefCOCO_plus
+from .refcocoplus_dataset import RefCOCO_plus
 from .flickr_dataset import Flickr30K
 from .mini_dataset import MiniDataset
 from . import samplers
