@@ -17,7 +17,7 @@ sys.path.append("/projectnb/llamagrp/gik/refer")
 
 from refer import REFER
 
-class RefCOCO+(Dataset):
+class RefCOCO_plus(Dataset):
     def __init__(self, data_dir="/projectnb/llamagrp/gik/refer/data", dataset="refcoco+", split="train", splitBy="unc", transforms=None):
         assert (split in ["train", "val", "test"])
         assert os.path.exists(data_dir), \
@@ -194,5 +194,5 @@ class RefCOCO+(Dataset):
     #    return self.ind_to_classes[class_id]
 
 if __name__ == "__main__":
-    ds = RefCOCO+()
+    ds = RefCOCO_plus()
     print(ds.next())
